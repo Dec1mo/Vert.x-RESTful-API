@@ -4,37 +4,38 @@
   <artifactId>api</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   
-  <dependencies>
-  	<dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-core</artifactId>
-      <version>3.0.0</version>
-    </dependency>
-    
-    <dependency>
-	  <groupId>io.vertx</groupId>
-	  <artifactId>vertx-web</artifactId>
-	  <version>3.0.0</version>
-	</dependency>
-	
-    <dependency>
-	    <groupId>mysql</groupId>
-	    <artifactId>mysql-connector-java</artifactId>
-	    <version>6.0.6</version>
-	</dependency>
-
-    <dependency>
-	  <groupId>io.vertx</groupId>
-	  <artifactId>vertx-jdbc-client</artifactId>
-	  <version>3.1.0</version>
-	</dependency>
-	
-	<dependency>
-      <groupId>com.aerospike</groupId>
-      <artifactId>aerospike-client</artifactId>
-      <version>4.1.11</version>
-    </dependency>
-  </dependencies>
+	<dependencies>
+		<dependency>
+			<groupId>io.vertx</groupId>
+			<artifactId>vertx-core</artifactId>
+			<version>3.0.0</version>
+		</dependency>
+	    <dependency>
+			<groupId>io.vertx</groupId>
+			<artifactId>vertx-web</artifactId>
+			<version>3.0.0</version>
+		</dependency>
+	    <dependency>
+			<groupId>io.vertx</groupId>
+			<artifactId>vertx-jdbc-client</artifactId>
+			<version>3.1.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.aerospike</groupId>
+			<artifactId>aerospike-client</artifactId>
+			<version>4.1.11</version>
+	    </dependency>
+	   	<dependency>
+		    <groupId>org.apache.hbase</groupId>
+		    <artifactId>hbase-client</artifactId>
+		    <version>1.4.10</version>
+		</dependency>
+	    <dependency>
+		    <groupId>mysql</groupId>
+		    <artifactId>mysql-connector-java</artifactId>
+		    <version>6.0.6</version>
+		</dependency>
+	</dependencies>
   
   <build>
     <plugins>

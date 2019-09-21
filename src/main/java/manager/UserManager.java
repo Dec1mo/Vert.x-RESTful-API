@@ -3,7 +3,7 @@ package manager;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class UserManager {
-	private static final AtomicInteger COUNTER = new AtomicInteger();
+	public static final AtomicInteger COUNTER = new AtomicInteger();
 	private final int id;
 	private String name;
 	private int year;
