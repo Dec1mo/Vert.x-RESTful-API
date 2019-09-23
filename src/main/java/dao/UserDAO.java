@@ -29,26 +29,25 @@ public class UserDAO {
 		return jsonUser;
 	}
 
-	public void createSomeData() {
-		UserManager user1 = new UserManager("Do Duc Thai", 1998);
-		UserManager user2 = new UserManager("Bui Hong Ngoc", 1998);
-		UserManager user3 = new UserManager("Le Quang Linh", 1998);
-
-		HBaseAction hBaseAction = new HBaseAction();
-		hBaseAction.insertUser(userToJson(user1));
-		hBaseAction.insertUser(userToJson(user2));
-		hBaseAction.insertUser(userToJson(user3));
-
-//		putToAerospike(new WritePolicy(), AerospikeConnection.getAerospikeClient(), 
-//				user1, Constants.NAMESPACE, Constants.SETNAME);
-//		putToAerospike(new WritePolicy(), AerospikeConnection.getAerospikeClient(), 
-//				user2, Constants.NAMESPACE, Constants.SETNAME);
-//		putToAerospike(new WritePolicy(), AerospikeConnection.getAerospikeClient(), 
-//				user3, Constants.NAMESPACE, Constants.SETNAME);
-//		users.put(user1.getId(), userToJson(user1));
-//		users.put(user2.getId(), userToJson(user2));
-//		users.put(user3.getId(), userToJson(user3));
-	}
+//	public void createSomeData() {
+//		UserManager user1 = new UserManager("Do Duc Thai", 1998);
+//		UserManager user2 = new UserManager("Bui Hong Ngoc", 1998);
+//		UserManager user3 = new UserManager("Le Quang Linh", 1998);
+//
+//		HBaseAction.getInstance().insertUser(userToJson(user1));
+//		HBaseAction.getInstance().insertUser(userToJson(user2));
+//		HBaseAction.getInstance().insertUser(userToJson(user3));
+//
+////		putToAerospike(new WritePolicy(), AerospikeConnection.getAerospikeClient(), 
+////				user1, Constants.NAMESPACE, Constants.SETNAME);
+////		putToAerospike(new WritePolicy(), AerospikeConnection.getAerospikeClient(), 
+////				user2, Constants.NAMESPACE, Constants.SETNAME);
+////		putToAerospike(new WritePolicy(), AerospikeConnection.getAerospikeClient(), 
+////				user3, Constants.NAMESPACE, Constants.SETNAME);
+////		users.put(user1.getId(), userToJson(user1));
+////		users.put(user2.getId(), userToJson(user2));
+////		users.put(user3.getId(), userToJson(user3));
+//	}
 
 	// ok
 	public void initData() {
@@ -60,10 +59,11 @@ public class UserDAO {
 		}
 		int maxId = Collections.max(usersList, new Comparator<JsonObject>() {
 			public int compare(JsonObject j1, JsonObject j2) {
-				return Integer.compare(j1.getInteger("id"), j1.getInteger("id"));
+				return Integer.compare(j1.getInteger("id"), j2.getInteger("id"));
 			}
 		}).getInteger("id");
-		UserManager.COUNTER.addAndGet(maxId);
+		System.out.println(maxId+1);
+		UserManager.COUNTER.addAndGet(maxId+1);
 		for (JsonObject jsonUser : usersList) {
 			users.put(jsonUser.getInteger("id"), jsonUser);
 		}
@@ -87,7 +87,11 @@ public class UserDAO {
 
 	// ok
 	public void addOne(RoutingContext routingContext) {
-		final UserManager user = Json.decodeValue(routingContext.getBodyAsString(), UserManager.class);
+		System.out.println(routingContext.getBodyAsString());
+		JsonObject jsonUserData = new JsonObject(routingContext.getBodyAsString());
+		final UserManager user = new UserManager(jsonUserData.getString("name"),
+				Integer.valueOf(jsonUserData.getString("year")));
+		System.out.println(user.getId());
 		JsonObject jsonUser = userToJson(user);
 		if (isAerospikeEnabled) {
 			AerospikeAction.getInstance().putUser(jsonUser, Constants.NAMESPACE, Constants.SETNAME);
@@ -111,9 +115,10 @@ public class UserDAO {
 				AerospikeAction.getInstance().deleteUserById(idAsInteger);
 			}
 			if (isHBaseEnabled) {
-				HBaseAction.getInstance().deleteUserById(id);
+				HBaseAction.getInstance().deleteUserById(idAsInteger);
 			}
 			users.remove(idAsInteger);
+//			System.out.println(users);
 		}
 		routingContext.response().setStatusCode(204).end();
 	}

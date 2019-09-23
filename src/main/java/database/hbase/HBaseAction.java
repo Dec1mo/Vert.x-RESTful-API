@@ -58,7 +58,7 @@ public class HBaseAction {
 		put.addImmutable(Constants.USER_TABLE_FAMILY1, Constants.USER_TABLE_F1_QUALIFIER1,
 				jsonUser.getString("name").getBytes());
 		put.addImmutable(Constants.USER_TABLE_FAMILY2, Constants.USER_TABLE_F2_QUALIFIER1,
-				jsonUser.getString("year").getBytes());
+				Bytes.toBytes(jsonUser.getInteger("year")));
 		try {
 			this.userTable.put(put);
 		} catch (IOException e) {
@@ -83,7 +83,7 @@ public class HBaseAction {
 				jsonUser.put("name", Bytes.toString(result.getValue(
 						Constants.USER_TABLE_FAMILY1, 
 						Constants.USER_TABLE_F1_QUALIFIER1)));
-				jsonUser.put("year", Bytes.toString(result.getValue(
+				jsonUser.put("year", Bytes.toInt(result.getValue(
 						Constants.USER_TABLE_FAMILY2, 
 						Constants.USER_TABLE_F2_QUALIFIER1)));
 				users.add(jsonUser);
@@ -94,12 +94,20 @@ public class HBaseAction {
 		return users;
 	}
 
-	public void deleteUserById(String id) {
+	public void deleteUserById(int id) {
+//		Delete delete = new Delete(Bytes.toBytes(id));
+//		delete.addColumns(Constants.USER_TABLE_FAMILY1,
+//				Constants.USER_TABLE_F1_QUALIFIER1);
+//		delete.addColumns(Constants.USER_TABLE_FAMILY2,
+//				Constants.USER_TABLE_F2_QUALIFIER1);
+//		
+//		Delete delete1 = new Delete(Bytes.toBytes(id));
+//		delete1.addColumns(Constants.USER_TABLE_FAMILY2,
+//				Constants.USER_TABLE_F2_QUALIFIER1);
+		
 		Delete delete = new Delete(Bytes.toBytes(id));
-		delete.addColumn(Constants.USER_TABLE_FAMILY1,
-				Constants.USER_TABLE_F1_QUALIFIER1);
-		delete.addColumn(Constants.USER_TABLE_FAMILY2,
-				Constants.USER_TABLE_F2_QUALIFIER1);
+		delete.addFamily(Constants.USER_TABLE_FAMILY1);
+		delete.addFamily(Constants.USER_TABLE_FAMILY2);
 		try {
 			this.userTable.delete(delete);
 		} catch (IOException e) {

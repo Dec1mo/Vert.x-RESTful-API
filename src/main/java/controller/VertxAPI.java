@@ -11,7 +11,7 @@ public class VertxAPI extends AbstractVerticle{
 	@Override
 	public void start(Future<Void>fu) {	
 		
-		UserDAO.getInstance().createSomeData();
+//		UserDAO.getInstance().createSomeData();
 		
 		UserDAO.getInstance().initData();
 		
@@ -33,7 +33,7 @@ public class VertxAPI extends AbstractVerticle{
 		vertx
 			.createHttpServer()
 			.requestHandler(router::accept)
-			.listen(8081, result -> {
+			.listen(8082, result -> {
 				if (result.succeeded()) {
 					System.out.println("Success!!!");
 					fu.complete();
