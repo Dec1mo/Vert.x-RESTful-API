@@ -33,8 +33,7 @@ public class HBaseAction {
 			System.out.println("IOException");
 		}
 		try {
-			this.userTable = new HTable(HBaseConnection.getInstance().getConfiguration(),
-					Constants.USERS_TABLE_NAME);
+			this.userTable = new HTable(HBaseConnection.getInstance().getConfiguration(), Constants.USERS_TABLE_NAME);
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.out.println("Can't get HTable");
@@ -52,69 +51,44 @@ public class HBaseAction {
 		HBaseConnection.getInstance().getAdmin().createTable(descriptor);
 	}
 
-	public void insertUser(JsonObject jsonUser) {
+	public void insertUser(JsonObject jsonUser) throws IOException {
 		byte[] row = Bytes.toBytes(jsonUser.getInteger("id"));
 		Put put = new Put(row);
 		put.addImmutable(Constants.USER_TABLE_FAMILY1, Constants.USER_TABLE_F1_QUALIFIER1,
 				jsonUser.getString("name").getBytes());
 		put.addImmutable(Constants.USER_TABLE_FAMILY2, Constants.USER_TABLE_F2_QUALIFIER1,
 				Bytes.toBytes(jsonUser.getInteger("year")));
-		try {
-			this.userTable.put(put);
-		} catch (IOException e) {
-			e.printStackTrace();
-			System.out.println("Cant put to table!!!");
-		}
+		this.userTable.put(put);
 	}
 
-	public ArrayList<JsonObject> getAllUsers() {
+	public ArrayList<JsonObject> getAllUsers() throws IOException {
 		Scan scan = new Scan();
 
 		scan.addColumn(Constants.USER_TABLE_FAMILY1, Constants.USER_TABLE_F1_QUALIFIER1);
 		scan.addColumn(Constants.USER_TABLE_FAMILY2, Constants.USER_TABLE_F2_QUALIFIER1);
 
 		ArrayList<JsonObject> users = new ArrayList<JsonObject>();
-		try {
-			ResultScanner scanner = this.userTable.getScanner(scan);
+		ResultScanner scanner = this.userTable.getScanner(scan);
 
-			for (Result result = scanner.next(); result != null; result = scanner.next()) {
-				JsonObject jsonUser = new JsonObject();
-				jsonUser.put("id", Bytes.toInt(result.getRow()));
-				jsonUser.put("name", Bytes.toString(result.getValue(
-						Constants.USER_TABLE_FAMILY1, 
-						Constants.USER_TABLE_F1_QUALIFIER1)));
-				jsonUser.put("year", Bytes.toInt(result.getValue(
-						Constants.USER_TABLE_FAMILY2, 
-						Constants.USER_TABLE_F2_QUALIFIER1)));
-				users.add(jsonUser);
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
+		for (Result result = scanner.next(); result != null; result = scanner.next()) {
+			JsonObject jsonUser = new JsonObject();
+			jsonUser.put("id", Bytes.toInt(result.getRow()));
+			jsonUser.put("name",
+					Bytes.toString(result.getValue(Constants.USER_TABLE_FAMILY1, Constants.USER_TABLE_F1_QUALIFIER1)));
+			jsonUser.put("year",
+					Bytes.toInt(result.getValue(Constants.USER_TABLE_FAMILY2, Constants.USER_TABLE_F2_QUALIFIER1)));
+			users.add(jsonUser);
 		}
 		return users;
 	}
 
-	public void deleteUserById(int id) {
-//		Delete delete = new Delete(Bytes.toBytes(id));
-//		delete.addColumns(Constants.USER_TABLE_FAMILY1,
-//				Constants.USER_TABLE_F1_QUALIFIER1);
-//		delete.addColumns(Constants.USER_TABLE_FAMILY2,
-//				Constants.USER_TABLE_F2_QUALIFIER1);
-//		
-//		Delete delete1 = new Delete(Bytes.toBytes(id));
-//		delete1.addColumns(Constants.USER_TABLE_FAMILY2,
-//				Constants.USER_TABLE_F2_QUALIFIER1);
-		
+	public void deleteUserById(int id) throws IOException {
 		Delete delete = new Delete(Bytes.toBytes(id));
 		delete.addFamily(Constants.USER_TABLE_FAMILY1);
 		delete.addFamily(Constants.USER_TABLE_FAMILY2);
-		try {
-			this.userTable.delete(delete);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		this.userTable.delete(delete);
 	}
-	
+
 	public static HBaseAction getInstance() {
 		if (hbAction == null) {
 			hbAction = new HBaseAction();

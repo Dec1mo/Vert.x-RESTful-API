@@ -1,5 +1,7 @@
 package dao;
 
+import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -7,6 +9,7 @@ import java.util.LinkedHashMap;
 import config.Constants;
 import database.aerospike.AerospikeAction;
 import database.hbase.HBaseAction;
+import database.mysql.MySQLAction;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
@@ -15,8 +18,11 @@ import manager.UserManager;
 public class UserDAO {
 
 	private static UserDAO userDAO;
+
+	// just simulate scenarios
 	private static boolean isAerospikeEnabled = false;
-	private static boolean isHBaseEnabled = true;
+	private static boolean isHBaseEnabled = false;
+	private static boolean isMySQLEnabled = true;
 	LinkedHashMap<Integer, JsonObject> users = new LinkedHashMap<Integer, JsonObject>();
 
 	private JsonObject userToJson(UserManager user) {
@@ -52,18 +58,28 @@ public class UserDAO {
 	// ok
 	public void initData() {
 		ArrayList<JsonObject> usersList = null;
-		if (isAerospikeEnabled) {
-			usersList = AerospikeAction.getInstance().getAllUsers();
-		} else if (isHBaseEnabled) {
-			usersList = HBaseAction.getInstance().getAllUsers();
-		}
-		int maxId = Collections.max(usersList, new Comparator<JsonObject>() {
-			public int compare(JsonObject j1, JsonObject j2) {
-				return Integer.compare(j1.getInteger("id"), j2.getInteger("id"));
+		try {
+			if (isAerospikeEnabled) {
+				usersList = AerospikeAction.getInstance().getAllUsers();
+			} else if (isHBaseEnabled) {
+				usersList = HBaseAction.getInstance().getAllUsers();
+			} else if (isMySQLEnabled) {
+				usersList = MySQLAction.getInstance().getAllUsers();
 			}
-		}).getInteger("id");
-		System.out.println(maxId+1);
-		UserManager.COUNTER.addAndGet(maxId+1);
+		} catch (IOException | SQLException e) {
+			e.printStackTrace();
+			return;
+		}
+		int maxId = -1;
+		if (!usersList.isEmpty()) {
+			maxId = Collections.max(usersList, new Comparator<JsonObject>() {
+				public int compare(JsonObject j1, JsonObject j2) {
+					return Integer.compare(j1.getInteger("id"), j2.getInteger("id"));
+				}
+			}).getInteger("id");
+		}
+		System.out.println(maxId + 1);
+		UserManager.COUNTER.addAndGet(maxId + 1);
 		for (JsonObject jsonUser : usersList) {
 			users.put(jsonUser.getInteger("id"), jsonUser);
 		}
@@ -72,32 +88,52 @@ public class UserDAO {
 	// ok
 	public void getAll(RoutingContext routingContext) {
 		ArrayList<JsonObject> usersList = null;
-		if (isAerospikeEnabled) {
-			usersList = AerospikeAction.getInstance().getAllUsers();
-		}
-		if (isHBaseEnabled) {
-			usersList = HBaseAction.getInstance().getAllUsers();
+		try {
+			if (isAerospikeEnabled) {
+				usersList = AerospikeAction.getInstance().getAllUsers();
+			} else if (isHBaseEnabled) {
+				usersList = HBaseAction.getInstance().getAllUsers();
+			} else if (isMySQLEnabled) {
+				usersList = MySQLAction.getInstance().getAllUsers();
+			}
+		} catch (IOException | SQLException e) {
+			e.printStackTrace();
+			return;
 		}
 		for (JsonObject jsonUser : usersList) {
 			users.put(jsonUser.getInteger("id"), jsonUser);
 		}
 		routingContext.response().putHeader("context-type", "application/json; charset=utf-8")
 				.end(Json.encodePrettily(users.values()));
+		System.out.println(users.values());
 	}
 
 	// ok
 	public void addOne(RoutingContext routingContext) {
 		System.out.println(routingContext.getBodyAsString());
 		JsonObject jsonUserData = new JsonObject(routingContext.getBodyAsString());
-		final UserManager user = new UserManager(jsonUserData.getString("name"),
-				Integer.valueOf(jsonUserData.getString("year")));
-		System.out.println(user.getId());
-		JsonObject jsonUser = userToJson(user);
-		if (isAerospikeEnabled) {
-			AerospikeAction.getInstance().putUser(jsonUser, Constants.NAMESPACE, Constants.SETNAME);
+		UserManager user = null;
+		try {
+			user = new UserManager(jsonUserData.getString("name"), Integer.valueOf(jsonUserData.getString("year")));
+		} catch (NumberFormatException e) {
+			System.out.println("Year must be integer!!");
 		}
-		if (isHBaseEnabled) {
-			HBaseAction.getInstance().insertUser(jsonUser);
+//		System.out.println(user.getId());
+		JsonObject jsonUser = userToJson(user);
+		// Need some mechanisms to handle more than these things
+		try {
+			if (isAerospikeEnabled) {
+				AerospikeAction.getInstance().putUser(jsonUser, Constants.NAMESPACE, Constants.SETNAME);
+			}
+			if (isHBaseEnabled) {
+				HBaseAction.getInstance().insertUser(jsonUser);
+			}
+			if (isMySQLEnabled) {
+				MySQLAction.getInstance().insertUser(jsonUser);
+			}
+		} catch (IOException | SQLException e) {
+			e.printStackTrace();
+			return;
 		}
 		users.put(user.getId(), jsonUser);
 		routingContext.response().setStatusCode(201).putHeader("content-type", "application/json; charset=utf-8")
@@ -111,11 +147,19 @@ public class UserDAO {
 			routingContext.response().setStatusCode(400).end();
 		} else {
 			Integer idAsInteger = Integer.valueOf(id);
-			if (isAerospikeEnabled) {
-				AerospikeAction.getInstance().deleteUserById(idAsInteger);
-			}
-			if (isHBaseEnabled) {
-				HBaseAction.getInstance().deleteUserById(idAsInteger);
+			try {
+				if (isAerospikeEnabled) {
+					AerospikeAction.getInstance().deleteUserById(idAsInteger);
+				}
+				if (isHBaseEnabled) {
+					HBaseAction.getInstance().deleteUserById(idAsInteger);
+				}
+				if (isMySQLEnabled) {
+					MySQLAction.getInstance().deleteUserById(idAsInteger);
+				}
+			} catch (IOException | SQLException e) {
+				e.printStackTrace();
+				return;
 			}
 			users.remove(idAsInteger);
 //			System.out.println(users);
@@ -137,12 +181,21 @@ public class UserDAO {
 			} else {
 				jsonUser.put("name", json.getString("name"));
 				jsonUser.put("year", Integer.valueOf(json.getString("year")));
-				
-				if (isAerospikeEnabled) {
-					AerospikeAction.getInstance().putUser(jsonUser, Constants.NAMESPACE, Constants.SETNAME);
-				}
-				if (isHBaseEnabled) {
-					HBaseAction.getInstance().insertUser(jsonUser);
+
+				// Need some mechanisms to handle more than these things
+				try {
+					if (isAerospikeEnabled) {
+						AerospikeAction.getInstance().putUser(jsonUser, Constants.NAMESPACE, Constants.SETNAME);
+					}
+					if (isHBaseEnabled) {
+						HBaseAction.getInstance().insertUser(jsonUser);
+					}
+					if (isMySQLEnabled) {
+						MySQLAction.getInstance().updateUser(jsonUser);
+					}
+				} catch (IOException | SQLException e) {
+					e.printStackTrace();
+					return;
 				}
 				routingContext.response().putHeader("content-type", "application/json; charset=utf-8")
 						.end(Json.encodePrettily(jsonUser));

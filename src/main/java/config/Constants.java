@@ -18,4 +18,10 @@ public class Constants {
 	public static final byte[] USER_TABLE_FAMILY2 = "Years".getBytes();
 	public static final byte[] USER_TABLE_F1_QUALIFIER1 = "name".getBytes();
 	public static final byte[] USER_TABLE_F2_QUALIFIER1 = "year".getBytes();
+	
+	// Hikari Connection Pool - MySQL
+	public static final String DB_USERNAME="db.username";
+	public static final String DB_PASSWORD="db.password";
+	public static final String DB_URL ="db.url";
+	public static final String DB_DRIVER_CLASS="driver.class.name";
 }
