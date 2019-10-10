@@ -5,11 +5,22 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
+
+import org.apache.lucene.spatial3d.geom.XYZBounds;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
+import org.apache.tinkerpop.gremlin.structure.T;
+import org.apache.tinkerpop.gremlin.structure.Vertex;
+import org.janusgraph.core.schema.JanusGraphManagement;
+
 import config.Constants;
 import database.aerospike.AerospikeAction;
 import database.hbase.HBaseAction;
+import database.janusgraph.JanusGraphAction;
+import database.janusgraph.JanusGraphConnection;
 import database.mysql.MySQLAction;
+import io.vavr.API.For1;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
@@ -22,7 +33,9 @@ public class UserDAO {
 	// just simulate scenarios
 	private static boolean isAerospikeEnabled = false;
 	private static boolean isHBaseEnabled = false;
-	private static boolean isMySQLEnabled = true;
+	private static boolean isMySQLEnabled = false;
+	private static boolean isJanusEnabled = true;
+
 	LinkedHashMap<Integer, JsonObject> users = new LinkedHashMap<Integer, JsonObject>();
 
 	private JsonObject userToJson(UserManager user) {
@@ -57,6 +70,15 @@ public class UserDAO {
 
 	// ok
 	public void initData() {
+//		JanusGraphConnection.getInstance().g.addV("user").property("id", 0).property("name", "Do Duc Thai")
+//				.property("year", 1998).next();
+//		JanusGraphConnection.getInstance().g.addV("user").property("id", 1).property("name", "Bui Hong Ngoc")
+//				.property("year", 1998).next();
+//		JanusGraphConnection.getInstance().g.addV("user").property("id", 2).property("name", "Le Quang Linh")
+//				.property("year", 1998).next();
+		
+		JanusGraphConnection.getInstance().g.tx().commit();
+
 		ArrayList<JsonObject> usersList = null;
 		try {
 			if (isAerospikeEnabled) {
@@ -65,23 +87,29 @@ public class UserDAO {
 				usersList = HBaseAction.getInstance().getAllUsers();
 			} else if (isMySQLEnabled) {
 				usersList = MySQLAction.getInstance().getAllUsers();
+			} else if (isJanusEnabled) {
+				usersList = JanusGraphAction.getInstance().getAllUsers();
 			}
 		} catch (IOException | SQLException e) {
 			e.printStackTrace();
 			return;
 		}
 		int maxId = -1;
-		if (!usersList.isEmpty()) {
+		if (usersList == null || usersList.isEmpty()) {
+			System.out.println("No data in databases");
+		} else {
 			maxId = Collections.max(usersList, new Comparator<JsonObject>() {
 				public int compare(JsonObject j1, JsonObject j2) {
 					return Integer.compare(j1.getInteger("id"), j2.getInteger("id"));
 				}
 			}).getInteger("id");
-		}
-		System.out.println(maxId + 1);
-		UserManager.COUNTER.addAndGet(maxId + 1);
-		for (JsonObject jsonUser : usersList) {
-			users.put(jsonUser.getInteger("id"), jsonUser);
+			System.out.println(maxId + 1);
+			UserManager.COUNTER.addAndGet(maxId + 1);
+			for (JsonObject jsonUser : usersList) {
+				users.put(jsonUser.getInteger("id"), jsonUser);
+
+			}
+
 		}
 	}
 
@@ -95,17 +123,23 @@ public class UserDAO {
 				usersList = HBaseAction.getInstance().getAllUsers();
 			} else if (isMySQLEnabled) {
 				usersList = MySQLAction.getInstance().getAllUsers();
+			} else if (isJanusEnabled) {
+				usersList = JanusGraphAction.getInstance().getAllUsers();
 			}
 		} catch (IOException | SQLException e) {
 			e.printStackTrace();
 			return;
 		}
-		for (JsonObject jsonUser : usersList) {
-			users.put(jsonUser.getInteger("id"), jsonUser);
+		if (usersList != null) {
+			for (JsonObject jsonUser : usersList) {
+				users.put(jsonUser.getInteger("id"), jsonUser);
+			}
+			routingContext.response().putHeader("context-type", "application/json; charset=utf-8")
+					.end(Json.encodePrettily(users.values()));
+			System.out.println(users.values());
+		} else {
+			routingContext.response().putHeader("context-type", "application/json; charset=utf-8");
 		}
-		routingContext.response().putHeader("context-type", "application/json; charset=utf-8")
-				.end(Json.encodePrettily(users.values()));
-		System.out.println(users.values());
 	}
 
 	// ok
@@ -118,7 +152,6 @@ public class UserDAO {
 		} catch (NumberFormatException e) {
 			System.out.println("Year must be integer!!");
 		}
-//		System.out.println(user.getId());
 		JsonObject jsonUser = userToJson(user);
 		// Need some mechanisms to handle more than these things
 		try {
@@ -130,6 +163,9 @@ public class UserDAO {
 			}
 			if (isMySQLEnabled) {
 				MySQLAction.getInstance().insertUser(jsonUser);
+			}
+			if (isJanusEnabled) {
+				JanusGraphAction.getInstance().insertUser(jsonUser);
 			}
 		} catch (IOException | SQLException e) {
 			e.printStackTrace();
@@ -156,6 +192,9 @@ public class UserDAO {
 				}
 				if (isMySQLEnabled) {
 					MySQLAction.getInstance().deleteUserById(idAsInteger);
+				}
+				if (isJanusEnabled) {
+					JanusGraphAction.getInstance().deleteUserById(idAsInteger);
 				}
 			} catch (IOException | SQLException e) {
 				e.printStackTrace();
@@ -192,6 +231,9 @@ public class UserDAO {
 					}
 					if (isMySQLEnabled) {
 						MySQLAction.getInstance().updateUser(jsonUser);
+					}
+					if (isJanusEnabled) {
+						JanusGraphAction.getInstance().updateUser(jsonUser);
 					}
 				} catch (IOException | SQLException e) {
 					e.printStackTrace();
